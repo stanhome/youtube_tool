@@ -8,7 +8,7 @@ import os, traceback, sys, subprocess
 import subprocess
 import threading
 from string import Template
-from pytube import YouTube
+from pytube import YouTube, Playlist
 from MyThread import MyThread
 
 ITAG_1080P_WEBM = 248
@@ -20,7 +20,6 @@ TEMP_FOLDER = os.path.join(CWD, "temp")
 OUTPUT_FOLDER = os.path.join(CWD, "output")
 FFMPEGE_FILE_PATH = os.path.join(CWD, "ffmpeg")
 CMD_FFMPEGE_TPL = Template(FFMPEGE_FILE_PATH + ' -y -i "${video}" -i "${audio}" "output/${out_file_name}.mp4"  -c:v libx264 -c:a aac')
-
 
 
 def mkdir(path):
@@ -39,13 +38,18 @@ NOTE: PLEASE USE THIS SCRIPT IN Python 3.X
 	./ytd.py [YouTube url]
 
 for example:
-	./ytd https://www.youtube.com/watch?v=VW5bBIA8AHY
+    single video download:
+	    ./ytd https://www.youtube.com/watch?v=VW5bBIA8AHY
+    list download:
+        ./ytd https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=1
 
 ''')
 
-def downloadSingle(url):
+def downloadSingle(url, filename_prefix=None):
     yt = YouTube(url)
     fileName = yt.title
+    if filename_prefix:
+        fileName = str(filename_prefix) + "_" + fileName
     print("download %s" % fileName)
 
 
@@ -123,13 +127,31 @@ def downloadSingle(url):
     print("well download")
 
 
+def downloadList(url):
+    pl = Playlist(url)
+    pl.construct_playlist_url()
+    videoUrls = pl.video_urls
+    prefix_gen = pl._path_num_prefix_generator()
+
+    # TODO: creat list folder 
+    for link in videoUrls:
+        prefix = next(prefix_gen)
+        print('file prefix is: %s', prefix)
+        downloadSingle(link, filename_prefix=prefix)
+
+
 def init():
     mkdir(TEMP_FOLDER)
     mkdir(OUTPUT_FOLDER)
 
 
 def doMain(url):
-    downloadSingle(url)
+    if "list=" in url:
+        # list download video
+        downloadList(url)
+        pass
+    else:
+        downloadSingle(url)
     pass
 
 
