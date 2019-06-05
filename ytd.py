@@ -91,7 +91,8 @@ def downloadSingle(url):
         print("english caption not found.")
     else:
         print("save caption to srt file:" + str(caption))
-        file = open(fileName + ".srt", "w")
+        fileName = fileName + ".srt"
+        file = open(os.path.join(OUTPUT_FOLDER, fileName), "w")
         file.write(caption.generate_srt_captions().replace("[Music]", ""))
         file.close()
 
