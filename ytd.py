@@ -7,8 +7,9 @@
 import os, traceback, sys, subprocess
 import subprocess
 import threading
+import re
 from string import Template
-from pytube import YouTube, Playlist
+from pytube import YouTube, Playlist, request
 from MyThread import MyThread
 
 ITAG_1080P_WEBM = 248
@@ -19,7 +20,7 @@ CWD = os.getcwd()
 TEMP_FOLDER = os.path.join(CWD, "temp")
 OUTPUT_FOLDER = os.path.join(CWD, "output")
 FFMPEGE_FILE_PATH = os.path.join(CWD, "ffmpeg")
-CMD_FFMPEGE_TPL = Template(FFMPEGE_FILE_PATH + ' -y -i "${video}" -i "${audio}" "output/${out_file_name}.mp4"  -c:v libx264 -c:a aac')
+CMD_FFMPEGE_TPL = Template(FFMPEGE_FILE_PATH + ' -y -i "${video}" -i "${audio}" "${out_file_name}.mp4"  -c:v libx264 -c:a aac')
 
 
 def mkdir(path):
@@ -45,12 +46,20 @@ for example:
 
 ''')
 
-def downloadSingle(url, filename_prefix=None):
+def downloadSingle(url, filename_prefix=None, subFolder=None):
     yt = YouTube(url)
+    
     fileName = yt.title
     if filename_prefix:
         fileName = str(filename_prefix) + "_" + fileName
-    print("download %s" % fileName)
+
+    outputFolder = OUTPUT_FOLDER
+    if subFolder:
+        outputFolder = os.path.join(outputFolder, subFolder)
+        mkdir(outputFolder)
+
+    outputFileName = os.path.join(outputFolder, fileName)
+    print("download to %s" % outputFileName)
 
 
     # 1. start download video
@@ -95,8 +104,7 @@ def downloadSingle(url, filename_prefix=None):
         print("english caption not found.")
     else:
         print("save caption to srt file:" + str(caption))
-        fileName = fileName + ".srt"
-        file = open(os.path.join(OUTPUT_FOLDER, fileName), "w")
+        file = open(outputFileName + ".srt", "w")
         file.write(caption.generate_srt_captions().replace("[Music]", ""))
         file.close()
 
@@ -108,7 +116,7 @@ def downloadSingle(url, filename_prefix=None):
 
     # 5. merge video and audio
     # ffmpeg -y -i %video% -i %audio% "output_file.mp4"  -c:v libx264 -c:a aac
-    mergedCmd = CMD_FFMPEGE_TPL.substitute(video=videoFilePath, audio=audioFilePath, out_file_name=fileName)
+    mergedCmd = CMD_FFMPEGE_TPL.substitute(video=videoFilePath, audio=audioFilePath, out_file_name=outputFileName)
     print(mergedCmd)
     # p = subprocess.Popen(mergedCmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     p = subprocess.Popen(mergedCmd)
@@ -129,15 +137,30 @@ def downloadSingle(url, filename_prefix=None):
 
 def downloadList(url):
     pl = Playlist(url)
-    pl.construct_playlist_url()
+    pl.populate_video_urls()
     videoUrls = pl.video_urls
     prefix_gen = pl._path_num_prefix_generator()
+
+    playlistTitle = getPlaylistTitle(pl.construct_playlist_url())
 
     # TODO: creat list folder 
     for link in videoUrls:
         prefix = next(prefix_gen)
-        print('file prefix is: %s', prefix)
-        downloadSingle(link, filename_prefix=prefix)
+        print('file prefix is: %d' % prefix)
+        downloadSingle(link, filename_prefix=prefix, subFolder=playlistTitle)
+
+def getPlaylistTitle(url):
+    req = request.get(url)
+    open_tag = "<title>"
+    end_tag = "</title>"
+    matchresult = re.compile(open_tag + "(.+?)" + end_tag)
+    matchresult = matchresult.search(req).group()
+    matchresult = matchresult.replace(open_tag, "")
+    matchresult = matchresult.replace(end_tag, "")
+    matchresult = matchresult.replace("- YouTube", "")
+    matchresult = matchresult.strip()
+
+    return matchresult
 
 
 def init():
@@ -167,8 +190,8 @@ if __name__ == '__main__':
         # doMain('https://www.youtube.com/watch?v=VW5bBIA8AHY')
         #durm
         # doMain('https://www.youtube.com/watch?v=kclUtptKsT8')
-        # doMain('https://www.youtube.com/watch?v=9bZkp7q19f0')
-        printUsage()
+        doMain('https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=2&t=11s')
+        # printUsage()
 
     elif length == 2:
         if sys.argv[1] == "-h":
