@@ -8,6 +8,7 @@ import os, traceback, sys, subprocess
 import subprocess
 import threading
 import re
+from multiprocessing import cpu_count
 from string import Template
 from pytube import YouTube, Playlist, request
 from MyThread import MyThread
@@ -25,8 +26,8 @@ CMD_FFMPEGE_TPL = Template(FFMPEGE_FILE_PATH + ' -y -i "${video}" -i "${audio}" 
 
 def mkdir(path):
     # uPath = path.decode("utf-8")
-    folder = os.path.exists(path)
-    if not folder:
+    isFolderExist = os.path.exists(path)
+    if not isFolderExist:
         os.makedirs(path)
     
 
@@ -47,6 +48,7 @@ for example:
 ''')
 
 def downloadSingle(url, filename_prefix=None, subFolder=None):
+    print("download: %s" % url)
     yt = YouTube(url)
     
     fileName = yt.title
@@ -60,6 +62,12 @@ def downloadSingle(url, filename_prefix=None, subFolder=None):
 
     outputFileName = os.path.join(outputFolder, fileName)
     print("download to %s" % outputFileName)
+
+
+    outputFullPath = outputFileName + ".mp4"
+    if os.path.exists(outputFullPath):
+        print("[*] skip, file exists: %s" % outputFullPath)
+        return
 
 
     # 1. start download video
@@ -132,10 +140,12 @@ def downloadSingle(url, filename_prefix=None, subFolder=None):
     else:
         print("[e]may be merged failed.")
 
-    print("well download")
 
 
 def downloadList(url):
+    taskCount = cpu_count()
+    print("we have %d cpus" % taskCount)
+
     pl = Playlist(url)
     pl.populate_video_urls()
     videoUrls = pl.video_urls
@@ -143,11 +153,33 @@ def downloadList(url):
 
     playlistTitle = getPlaylistTitle(pl.construct_playlist_url())
 
-    # TODO: creat list folder 
+
+    #single thread
+    # for link in videoUrls:
+    #     prefix = next(prefix_gen)
+    #     print('file prefix is: %s' % prefix)
+    #     downloadSingle(link, filename_prefix=prefix, subFolder=playlistTitle)
+
+
+    # multiple thread
+    downloadTasks = []
     for link in videoUrls:
         prefix = next(prefix_gen)
-        print('file prefix is: %d' % prefix)
-        downloadSingle(link, filename_prefix=prefix, subFolder=playlistTitle)
+        print('file prefix is: %s' % prefix)
+        # downloadSingle(link, filename_prefix=prefix, subFolder=playlistTitle)
+        task = threading.Thread(target=downloadSingle, args=(link, prefix, playlistTitle))
+        downloadTasks.append(task)
+
+    for task in downloadTasks:
+        task.start()
+
+    for task in downloadTasks:
+        task.join()
+
+    print("all download task done.")
+
+    
+
 
 def getPlaylistTitle(url):
     req = request.get(url)
@@ -175,7 +207,9 @@ def doMain(url):
         pass
     else:
         downloadSingle(url)
-    pass
+
+
+    print("well download")
 
 
 # ------------------------ main ------------------------
@@ -190,8 +224,8 @@ if __name__ == '__main__':
         # doMain('https://www.youtube.com/watch?v=VW5bBIA8AHY')
         #durm
         # doMain('https://www.youtube.com/watch?v=kclUtptKsT8')
-        doMain('https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=2&t=11s')
-        # printUsage()
+        # doMain('https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=2&t=11s')
+        printUsage()
 
     elif length == 2:
         if sys.argv[1] == "-h":
