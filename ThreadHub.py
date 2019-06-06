@@ -6,7 +6,7 @@
 
 import threading
 
-class MyThread(threading.Thread):
+class DownloadThread(threading.Thread):
     def __init__(self, func, args, **dicArgs):
         threading.Thread.__init__(self)
         self.func = func

@@ -163,7 +163,6 @@ s_linkStatusDic = {}
 
 def downloadList(url):
     taskCount = cpu_count() -1
-    taskCount = 3
     print("we can have %d tasks" % taskCount)
 
     pl = Playlist(url)
