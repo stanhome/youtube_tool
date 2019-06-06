@@ -182,6 +182,8 @@ def downloadList(url):
     downloadListMultipleThread(argsArrayList)
     times = 1
     while hasToDownloadTask():
+        times += 1
+        print("=>try %d times" % times)
         downloadListMultipleThread(argsArrayList)
 
 
