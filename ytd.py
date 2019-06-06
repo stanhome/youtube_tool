@@ -20,9 +20,11 @@ ITAG_1080P_MP4 = 137
 CWD = os.getcwd()
 TEMP_FOLDER = os.path.join(CWD, "temp")
 OUTPUT_FOLDER = os.path.join(CWD, "output")
-FFMPEGE_FILE_PATH = os.path.join(CWD, "ffmpeg")
-CMD_FFMPEGE_TPL = Template(FFMPEGE_FILE_PATH + ' -y -i "${video}" -i "${audio}" "${out_file_name}.mp4"  -c:v libx264 -c:a aac')
+FFMPEG_FILE_PATH = os.path.join(CWD, "ffmpeg")
+CMD_FFMPEG_TPL = Template(FFMPEG_FILE_PATH + ' -y -i "${video}" -i "${audio}" "${out_file_name}.mp4"  -c:v libx264 -c:a aac')
 
+# keep one ffmpeg progress at one time
+s_keepSingleFFmpegLock = threading.Lock()
 
 def mkdir(path):
     # uPath = path.decode("utf-8")
@@ -140,7 +142,9 @@ def downloadSingle(url, filename_prefix=None, subFolder=None):
 
     # 5. merge video and audio
     # ffmpeg -y -i %video% -i %audio% "output_file.mp4"  -c:v libx264 -c:a aac
-    mergedCmd = CMD_FFMPEGE_TPL.substitute(video=videoFilePath, audio=audioFilePath, out_file_name=outputFileName)
+    mergedCmd = CMD_FFMPEG_TPL.substitute(video=videoFilePath, audio=audioFilePath, out_file_name=outputFileName)
+    # keep one ffmpeg at one time
+    s_keepSingleFFmpegLock.acquire()
     print(mergedCmd)
     # p = subprocess.Popen(mergedCmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     p = subprocess.Popen(mergedCmd)
@@ -155,6 +159,7 @@ def downloadSingle(url, filename_prefix=None, subFolder=None):
         print("%s.mp4 merged success" % (fileName))
     else:
         print("[e]may be merged failed.")
+    s_keepSingleFFmpegLock.release()
 
 
 # record link download status: link url => status(True or False)
