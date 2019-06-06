@@ -5,6 +5,7 @@
 # @date: 20190531
 
 import os, traceback, sys, subprocess
+import time
 import subprocess
 import threading
 import re
@@ -149,7 +150,7 @@ def downloadSingle(url, filename_prefix=None, subFolder=None):
     # p = subprocess.Popen(mergedCmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     p = subprocess.Popen(mergedCmd)
     while p.poll() is None:
-        pass
+        time.sleep(1)
         # line = p.stdout.readline()
         # line = line.strip()
         # if line:
@@ -168,7 +169,7 @@ s_linkStatusDic = {}
 
 def downloadList(url):
     taskCount = cpu_count() -1
-    print("we can have %d tasks" % taskCount)
+    print("we have %d cpus" % (taskCount + 1))
 
     pl = Playlist(url)
     pl.populate_video_urls()
