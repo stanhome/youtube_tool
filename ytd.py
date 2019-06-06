@@ -16,6 +16,7 @@ from ThreadHub import DownloadThread, ListDownloadThreadFunc
 
 ITAG_1080P_WEBM = 248
 ITAG_1080P_MP4 = 137
+ITAG_720P_MP4_WITH_AUDIO = 22
 
 
 CWD = os.getcwd()
@@ -75,12 +76,30 @@ def downloadSingle(url, filename_prefix=None, subFolder=None):
         return
 
 
+
     # 1. start download video
     videoToDownloadStream = yt.streams.get_by_itag(ITAG_1080P_WEBM)
     if videoToDownloadStream is None:
         videoToDownloadStream = yt.streams.get_by_itag(ITAG_1080P_MP4)
     if videoToDownloadStream is None:
-        print("[e] 1080p video srouce not found.")
+        print("[w] 1080p video srouce not found.")
+        videoToDownloadStream = yt.streams.get_by_itag(ITAG_720P_MP4_WITH_AUDIO)
+
+    #TODO
+    # if videoToDownloadStream is None:
+    #     videoToDownloadStream = 
+
+
+    fileSizeByMB = videoToDownloadStream.filesize / 1048576.0
+    videoTip = "download video stream(%s), size(%f MB) to save:%s" % (str(videoToDownloadStream), fileSizeByMB, videoToDownloadStream.default_filename)
+
+    if videoToDownloadStream.is_progressive:
+        # video with audio, we can download indirectly.
+        print("videoToDownloadStream.is_progressive == TRUE, video with audio. ")
+        prefix = filename_prefix + "_" if filename_prefix else None
+        videoSavePath = videoToDownloadStream.download(output_path=outputFolder, filename_prefix=prefix)
+        print("downlaod done: %s", videoSavePath)
+        return
 
     # judgement whether the video file exists
     videoFilePath = os.path.join(TEMP_FOLDER, "v_" + videoToDownloadStream.default_filename)
@@ -93,8 +112,6 @@ def downloadSingle(url, filename_prefix=None, subFolder=None):
         # print("download done: %s" % videoFilePath)
 
         # multiple thread
-        fileSizeByMB = videoToDownloadStream.filesize / 1048576.0
-        videoTip = "download video stream(%s), size(%f MB) to save:%s" % (str(videoToDownloadStream), fileSizeByMB, videoToDownloadStream.default_filename)
         videoDownloadTask = DownloadThread(videoToDownloadStream.download, 
             {"output_path": TEMP_FOLDER, "filename": None, "filename_prefix": "v_"},
             startTip=videoTip, fileSizeByMB=fileSizeByMB, doneFilePath=videoDoneFilePath)
