@@ -11,7 +11,7 @@ import re
 from multiprocessing import cpu_count
 from string import Template
 from pytube import YouTube, Playlist, request
-from MyThread import MyThread
+from MyThread import MyThread, ListDownloadThreadFunc
 
 ITAG_1080P_WEBM = 248
 ITAG_1080P_MP4 = 137
@@ -41,14 +41,14 @@ NOTE: PLEASE USE THIS SCRIPT IN Python 3.X
 
 for example:
     single video download:
-	    ./ytd https://www.youtube.com/watch?v=VW5bBIA8AHY
+	    ./ytd "https://www.youtube.com/watch?v=VW5bBIA8AHY"
     list download:
-        ./ytd https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=1
+        ./ytd "https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=1"
 
 ''')
 
 def downloadSingle(url, filename_prefix=None, subFolder=None):
-    print("download: %s" % url)
+    print("download: %s" % str(url))
     yt = YouTube(url)
     
     fileName = yt.title
@@ -141,9 +141,13 @@ def downloadSingle(url, filename_prefix=None, subFolder=None):
         print("[e]may be merged failed.")
 
 
+# record link download status: link url => status(True or False)
+s_linkStatusDic = {}
+
 
 def downloadList(url):
     taskCount = cpu_count()
+    taskCount = 2
     print("we have %d cpus" % taskCount)
 
     pl = Playlist(url)
@@ -162,23 +166,50 @@ def downloadList(url):
 
 
     # multiple thread
-    downloadTasks = []
+    argsArrayList = []
+    for i in range(0, taskCount):
+        argsArrayList.append([])
+
+    i = 0
     for link in videoUrls:
+        idx = i % taskCount
+        i += 1
         prefix = next(prefix_gen)
-        print('file prefix is: %s' % prefix)
+        argsArrayList[idx].append((link, prefix, playlistTitle)) 
+        s_linkStatusDic[link] = False
+
+
+    downloadListMultipleThread(argsArrayList)
+    times = 1
+    while hasToDownloadTask():
+        downloadListMultipleThread(argsArrayList)
+
+
+    print("all download task done.")
+
+def hasToDownloadTask():
+    ret = False
+    for key in s_linkStatusDic:
+        if s_linkStatusDic[key] == False:
+            ret = True
+            break
+
+    return ret
+
+def downloadListMultipleThread(argsArrayList):
+    downloadTasks = []
+    for argsArray in argsArrayList:
         # downloadSingle(link, filename_prefix=prefix, subFolder=playlistTitle)
-        task = threading.Thread(target=downloadSingle, args=(link, prefix, playlistTitle))
+        downloadThreadFunc = ListDownloadThreadFunc(downloadSingle, argsArray, s_linkStatusDic)
+        task = threading.Thread(target=downloadThreadFunc)
         downloadTasks.append(task)
+
 
     for task in downloadTasks:
         task.start()
 
     for task in downloadTasks:
         task.join()
-
-    print("all download task done.")
-
-    
 
 
 def getPlaylistTitle(url):
