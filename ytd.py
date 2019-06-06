@@ -11,7 +11,7 @@ import re
 from multiprocessing import cpu_count
 from string import Template
 from pytube import YouTube, Playlist, request
-from MyThread import MyThread, ListDownloadThreadFunc
+from ThreadHub import DownloadThread, ListDownloadThreadFunc
 
 ITAG_1080P_WEBM = 248
 ITAG_1080P_MP4 = 137
@@ -92,7 +92,7 @@ def downloadSingle(url, filename_prefix=None, subFolder=None):
         # multiple thread
         fileSizeByMB = videoToDownloadStream.filesize / 1048576.0
         videoTip = "download video stream(%s), size(%f MB) to save:%s" % (str(videoToDownloadStream), fileSizeByMB, videoToDownloadStream.default_filename)
-        videoDownloadTask = MyThread(videoToDownloadStream.download, 
+        videoDownloadTask = DownloadThread(videoToDownloadStream.download, 
             {"output_path": TEMP_FOLDER, "filename": None, "filename_prefix": "v_"},
             startTip=videoTip, fileSizeByMB=fileSizeByMB, doneFilePath=videoDoneFilePath)
 
