@@ -7,11 +7,13 @@
 import threading
 
 class MyThread(threading.Thread):
-    def __init__(self, func, args, startTip):
+    def __init__(self, func, args, **dicArgs):
         threading.Thread.__init__(self)
         self.func = func
         self.args = args
-        self.startTip = startTip
+        self.startTip = dicArgs["startTip"]
+        self.fileSizeByMB = dicArgs["fileSizeByMB"]
+        self.doneFilePath = dicArgs["doneFilePath"]
 
 
     def getResult(self):
@@ -22,6 +24,12 @@ class MyThread(threading.Thread):
         ## NOTE: slef.args = {"output_path": TEMP_FOLDER, "filename": None, "filename_prefix": "v_"}
         ## this parameter transfor is very IMPORTANT
         self.res = self.func(**self.args)
+
+        # save done file for flag
+        doneFile = open(self.doneFilePath, "w")
+        doneFile.write("file size: %f MB" % self.fileSizeByMB)
+        doneFile.close()
+
         print("task done: %s" % self.res)
 
 

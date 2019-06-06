@@ -41,8 +41,10 @@ NOTE: PLEASE USE THIS SCRIPT IN Python 3.X
 
 for example:
     single video download:
+        python ytd.py "https://www.youtube.com/watch?v=VW5bBIA8AHY"
 	    ./ytd "https://www.youtube.com/watch?v=VW5bBIA8AHY"
     list download:
+        python ytd.py "https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=2&t=11s"
         ./ytd "https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=1"
 
 ''')
@@ -77,33 +79,46 @@ def downloadSingle(url, filename_prefix=None, subFolder=None):
     if videoToDownloadStream is None:
         print("[e] 1080p video srouce not found.")
 
-    # single thread
-    # print("download video stream(%s), size(%f MB) to save:%s" % (str(videoToDownloadStream), videoToDownloadStream.filesize / 1048576.0, videoToDownloadStream.default_filename))
-    # videoFilePath = videoToDownloadStream.download(output_path=TEMP_FOLDER, filename=None, filename_prefix="v_")
-    # print("download done: %s" % videoFilePath)
+    # judgement whether the video file exists
+    videoFilePath = os.path.join(TEMP_FOLDER, "v_" + videoToDownloadStream.default_filename)
+    videoDoneFilePath = videoFilePath + ".done"
+    videoDownloadTask = None
+    if not os.path.exists(videoDoneFilePath):
+        # single thread
+        # print("download video stream(%s), size(%f MB) to save:%s" % (str(videoToDownloadStream), videoToDownloadStream.filesize / 1048576.0, videoToDownloadStream.default_filename))
+        # videoFilePath = videoToDownloadStream.download(output_path=TEMP_FOLDER, filename=None, filename_prefix="v_")
+        # print("download done: %s" % videoFilePath)
 
-    # multiple thread
-    videoTip = "download video stream(%s), size(%f MB) to save:%s" % (str(videoToDownloadStream), videoToDownloadStream.filesize / 1048576.0, videoToDownloadStream.default_filename)
-    videoDownloadTask = MyThread(videoToDownloadStream.download, 
-        {"output_path": TEMP_FOLDER, "filename": None, "filename_prefix": "v_"},
-        videoTip)
+        # multiple thread
+        fileSizeByMB = videoToDownloadStream.filesize / 1048576.0
+        videoTip = "download video stream(%s), size(%f MB) to save:%s" % (str(videoToDownloadStream), fileSizeByMB, videoToDownloadStream.default_filename)
+        videoDownloadTask = MyThread(videoToDownloadStream.download, 
+            {"output_path": TEMP_FOLDER, "filename": None, "filename_prefix": "v_"},
+            startTip=videoTip, fileSizeByMB=fileSizeByMB, doneFilePath=videoDoneFilePath)
 
-    videoDownloadTask.start()
+        videoDownloadTask.start()
+    else:
+        print("skip temp file because of file has existed: %s" % videoDoneFilePath)
 
 
     # 2. start download audio
     audioToDownloadStream = yt.streams.filter(only_audio=True).order_by("abr").desc().first()
-    # single thread
-    print("download audio stream(%s), size(%f MB) to save: %s" % (str(audioToDownloadStream), audioToDownloadStream.filesize / 1048576.0, audioToDownloadStream.default_filename))
-    audioFilePath = audioToDownloadStream.download(output_path=TEMP_FOLDER, filename_prefix='a_')
-    print("download done: %s" % audioFilePath)
+    #judgement whether the audio file exists
+    audioFilePath = os.path.join(TEMP_FOLDER, "a_" + audioToDownloadStream.default_filename)
+    audioDoneFilePath = audioFilePath + ".done"
+    if not os.path.exists(audioDoneFilePath):
 
-    # multiple thread( let audio download task in main task)
-    # tip = "download audio stream(%s), size(%f MB) to save: %s" % (str(audioToDownloadStream), audioToDownloadStream.filesize / 1048576.0, audioToDownloadStream.default_filename)
-    # audioDownloadTask = MyThread(audioToDownloadStream.download, 
-    #     {"output_path":TEMP_FOLDER, "filename_prefix":"a_"}, 
-    #     tip)
-    # audioDownloadTask.start()
+        # single thread
+        fileSizeByMB = audioToDownloadStream.filesize / 1048576.0
+        print("download audio stream(%s), size(%f MB) to save: %s" % (str(audioToDownloadStream), fileSizeByMB, audioToDownloadStream.default_filename))
+        audioFilePath = audioToDownloadStream.download(output_path=TEMP_FOLDER, filename_prefix='a_')
+        # save done file for flag
+        doneFile = open(audioDoneFilePath, "w")
+        doneFile.write("file size: %f MB" % fileSizeByMB)
+        doneFile.close()
+        print("download done: %s" % audioFilePath)
+    else:
+        print("skip temp file because of file has existed: %s" % audioDoneFilePath)
 
 
     # 3. download caption file.
@@ -118,8 +133,9 @@ def downloadSingle(url, filename_prefix=None, subFolder=None):
 
 
     # 4. wait all task finish.
-    videoDownloadTask.join()
-    videoFilePath = videoDownloadTask.getResult()
+    if videoDownloadTask:
+        videoDownloadTask.join()
+        videoFilePath = videoDownloadTask.getResult()
 
 
     # 5. merge video and audio
@@ -146,9 +162,9 @@ s_linkStatusDic = {}
 
 
 def downloadList(url):
-    taskCount = cpu_count()
-    taskCount = 2
-    print("we have %d cpus" % taskCount)
+    taskCount = cpu_count() -1
+    taskCount = 3
+    print("we can have %d tasks" % taskCount)
 
     pl = Playlist(url)
     pl.populate_video_urls()
@@ -183,7 +199,9 @@ def downloadList(url):
     times = 1
     while hasToDownloadTask():
         times += 1
-        print("=>try %d times" % times)
+        toDownloadFileDic = {k: v for k, v in s_linkStatusDic.items() if v == False}
+        print("=>try %d times, file to download count: %d" % (times, len(toDownloadFileDic)))
+        print(" %s", str(toDownloadFileDic))
         downloadListMultipleThread(argsArrayList)
 
 
@@ -257,7 +275,7 @@ if __name__ == '__main__':
         # doMain('https://www.youtube.com/watch?v=VW5bBIA8AHY')
         #durm
         # doMain('https://www.youtube.com/watch?v=kclUtptKsT8')
-        # doMain('https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=2&t=11s')
+        #doMain('https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=2&t=11s')
         printUsage()
 
     elif length == 2:
