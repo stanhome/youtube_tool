@@ -4,6 +4,7 @@
 # @author: stan
 # @date: 20190531
 
+import os
 import threading
 
 class DownloadThread(threading.Thread):
@@ -12,7 +13,7 @@ class DownloadThread(threading.Thread):
         self.func = func
         self.args = args
         self.startTip = dicArgs["startTip"]
-        self.fileSizeByMB = dicArgs["fileSizeByMB"]
+        self.filesize = dicArgs["filesize"]
         self.doneFilePath = dicArgs["doneFilePath"]
 
 
@@ -25,10 +26,16 @@ class DownloadThread(threading.Thread):
         ## this parameter transfor is very IMPORTANT
         self.res = self.func(**self.args)
 
-        # save done file for flag
-        doneFile = open(self.doneFilePath, "w")
-        doneFile.write("file size: %f MB" % self.fileSizeByMB)
-        doneFile.close()
+
+        fileRealSize = os.path.getsize(self.res)
+        if fileRealSize == self.filesize:
+            # save done file for flag
+            doneFile = open(self.doneFilePath, "w")
+            doneFile.write("file size: %d" % self.filesize)
+            doneFile.close()
+        else:
+            raise Exception("audio file download failed. file size is wrong. stream file size(%d), real file size(%d)" % (self.filesize, fileRealSize))
+            return
 
         print("task done: %s" % self.res)
 
