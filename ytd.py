@@ -289,8 +289,12 @@ def init():
     mkdir(TEMP_FOLDER)
     mkdir(OUTPUT_FOLDER)
 
-def doMain(url, maxCount=None, start=None, end=None):
-    if "list=" in url:
+def doMain(url, maxCount=None, start=None, end=None, isDownloadList = False):
+    if isDownloadList and "list=" in url:
+        downloadList(url, maxCount, start, end)
+    elif "watch?v=" in url:
+        downloadSingle(url)
+    elif "list=" in url:
         # list download video
         downloadList(url, maxCount, start, end)
         pass
@@ -343,14 +347,18 @@ if __name__ == '__main__':
         else:
             doMain(sys.argv[1])
 
+    elif length == 3:
+        if sys.argv[2] == "--list":
+            doMain(sys.argv[1], isDownloadList=True)
+
     elif length == 4:
         if sys.argv[2] == '-c':
             # downlaod by max count
             maxCount = int(sys.argv[3])
-            doMain(sys.argv[1], maxCount)
+            doMain(sys.argv[1], maxCount, isDownloadList=True)
         if sys.argv[2] == "--scope":
             scopeStr = sys.argv[3].split(",")
-            doMain(sys.argv[1], start=int(scopeStr[0]), end=int(scopeStr[1]))
+            doMain(sys.argv[1], start=int(scopeStr[0]), end=int(scopeStr[1]), isDownloadList=True)
         
     else:
         printUsage()
