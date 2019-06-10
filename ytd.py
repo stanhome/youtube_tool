@@ -15,7 +15,7 @@ from pytube import YouTube, Playlist, request
 from ThreadHub import DownloadThread, ListDownloadThreadFunc
 
 # 同时下载数量
-DOWNLOAD_TASK_CUNT = 3
+DOWNLOAD_TASK_CUNT = 1
 
 ITAG_1080P_WEBM = 248
 ITAG_1080P_MP4 = 137
@@ -315,8 +315,8 @@ for example:
 	    ./ytd "https://www.youtube.com/watch?v=VW5bBIA8AHY"
     list download:
         python ytd.py "https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=2&t=11s"
-        python ytd.py "https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=2&t=11s" -c 10
-        python ytd.py "https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=2&t=11s" --scope 1,10
+        python ytd.py "https://www.youtube.com/playlist?list=PLwmPBqRou8AOb_RPjM4gwTqPkzmXcpQB8" -c 10
+        python ytd.py "https://www.youtube.com/playlist?list=PLwmPBqRou8AOb_RPjM4gwTqPkzmXcpQB8" --scope 1,10
         python ytd.py "https://www.youtube.com/playlist?list=PLwmPBqRou8AOb_RPjM4gwTqPkzmXcpQB8" -c 56
         ./ytd "https://www.youtube.com/watch?v=kclUtptKsT8&list=PLThYwnIoLwyXZr0xQHMfEZcoYPXWtTVJO&index=1"
 
@@ -348,7 +348,7 @@ if __name__ == '__main__':
             # downlaod by max count
             maxCount = int(sys.argv[3])
             doMain(sys.argv[1], maxCount)
-        if sys.args[2] == "--scope":
+        if sys.argv[2] == "--scope":
             scopeStr = sys.argv[3].split(",")
             doMain(sys.argv[1], start=int(scopeStr[0]), end=int(scopeStr[1]))
         
